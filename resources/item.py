@@ -8,6 +8,9 @@ class Item(Resource):
     parser.add_argument(
         "price", type=float, required=True, help="Price cannot be left empty"
     )
+    parser.add_argument(
+        "store_id", type=int, required=True, help="Item must be linked to a store"
+    )
 
     def get(self, name):
         item = ItemModel.find_by_name(name)
@@ -36,6 +39,7 @@ class Item(Resource):
 
         if item:
             item.price = data["price"]
+            item.store_id = data["store_id"]
         else:
             item = ItemModel(name, **data)
 

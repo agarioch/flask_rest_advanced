@@ -4,7 +4,6 @@ from models.store import StoreModel
 
 
 class Store(Resource):
-
     def get(self, name):
         store = StoreModel.find_by_name(name)
         if store:
@@ -14,13 +13,13 @@ class Store(Resource):
     def post(self, name):
         store = StoreModel.find_by_name(name)
         if store:
-            return {"message": "Error, store already exists"}, 400
+            return {"message": "Error, store with name '{}' already exists".format(name)}, 400
         store = StoreModel(name)
-        
+
         try:
             store.save_to_db()
         except:
-            return {"message", "An error occurred while saving the new store"}, 500
+            return {"message": "An error occurred while saving the new store"}, 500
 
         return store.json(), 201
 
