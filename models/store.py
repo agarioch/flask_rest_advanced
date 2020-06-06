@@ -8,7 +8,6 @@ class StoreModel(db.Model):
     name = db.Column(db.String)
 
     def __init__(self, name):
-        self.id = id
         self.name = name
 
     def json(self):
@@ -18,8 +17,8 @@ class StoreModel(db.Model):
         }
 
     @classmethod
-    def find_by_id(cls, id):
-        return cls.query.filter_by(id=id).first()
+    def find_by_name(cls, name):
+        return cls.query.filter_by(name=name).first()
 
     @classmethod
     def find_all(cls):

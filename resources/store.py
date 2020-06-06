@@ -1,6 +1,5 @@
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 
-from models.item import ItemModel
 from models.store import StoreModel
 
 
@@ -16,9 +15,8 @@ class Store(Resource):
         store = StoreModel.find_by_name(name)
         if store:
             return {"message": "Error, store already exists"}, 400
-        data = Store.parser.parse_args()
-        store = StoreModel(name, **data)
-
+        store = StoreModel(name)
+        
         try:
             store.save_to_db()
         except:
@@ -26,23 +24,12 @@ class Store(Resource):
 
         return store.json(), 201
 
-    def put(self, name):
-        store = StoreModel.find_by_name(name)
-
-        if store:
-            store.name = name
-        else:
-            store = StoreModel(name)
-
-        store.save_to_db()
-        return store.json(), 200
-
     def delete(self, name):
         store = StoreModel.find_by_name(name)
         if store:
             store.delete_from_db()
             return {"message": "item deleted"}, 200
-        return {"message": "Error, item with name '{}' does not exist".format(name)}, 404
+        return {"message": "Error, store with name '{}' does not exist".format(name)}, 404
 
 
 class StoreList(Resource):
