@@ -2,36 +2,44 @@ from flask_restful import Resource
 
 from models.store import StoreModel
 
+EXISTS_ERROR = "{} already exists"
+STORE_NOT_FOUND = "Store not found"
+SAVE_ERROR = "An error occurred while saving {}"
+STORE_DELETED = "Store deleted"
+
 
 class Store(Resource):
-    def get(self, name: str):
+    @classmethod
+    def get(cls, name: str):
         store = StoreModel.find_by_name(name)
         if store:
             return store.json(), 200
-        return {"message": "Store not found"}, 404
+        return {"message": STORE_NOT_FOUND}, 404
 
-    def post(self, name: str):
+    @classmethod
+    def post(cls, name: str):
         store = StoreModel.find_by_name(name)
         if store:
-            return {"message": "Error, store with name '{}' already exists".format(name)}, 400
+            return {"message": EXISTS_ERROR.format(name)}, 400
         store = StoreModel(name)
 
         try:
             store.save_to_db()
         except:
-            return {"message": "An error occurred while saving the new store"}, 500
+            return {"message": SAVE_ERROR}, 500
 
         return store.json(), 201
 
-    def delete(self, name: str):
+    @classmethod
+    def delete(cls, name: str):
         store = StoreModel.find_by_name(name)
         if store:
             store.delete_from_db()
-            return {"message": "item deleted"}, 200
-        return {"message": "Error, store with name '{}' does not exist".format(name)}, 404
+            return {"message": STORE_DELETED}, 200
+        return {"message": STORE_NOT_FOUND.format(name)}, 404
 
 
 class StoreList(Resource):
-
-    def get(self):
+    @classmethod
+    def get(cls):
         return [store.json() for store in StoreModel.find_all()]

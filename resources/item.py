@@ -3,40 +3,49 @@ from flask_jwt_extended import jwt_required, jwt_optional, get_jwt_identity
 
 from models.item import ItemModel
 
+BLANK_ERROR = "{} cannot be left blank"
+EXISTS_ERROR = "{} already exists"
+ITEM_NOT_FOUND = "Item not found"
+SAVE_ERROR = "An error occurred while saving {}"
+ITEM_DELETED = "Item deleted"
+
 
 class Item(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument(
-        "price", type=float, required=True, help="Price cannot be left empty"
+        "price", type=float, required=True, help=BLANK_ERROR.format("price")
     )
     parser.add_argument(
-        "store_id", type=int, required=True, help="Item must be linked to a store"
+        "store_id", type=int, required=True, help=BLANK_ERROR.format("store_id")
     )
 
+    @classmethod
     @jwt_required
-    def get(self, name: str):
+    def get(cls, name: str):
         item = ItemModel.find_by_name(name)
         if item:
             return item.json(), 200
-        return {"message": "Item not found"}, 404
+        return {"message": ITEM_NOT_FOUND}, 404
 
+    @classmethod
     @jwt_required
-    def post(self, name: str):
+    def post(cls, name: str):
         item = ItemModel.find_by_name(name)
         if item:
-            return {"message": "Error, item already exists"}, 400
+            return {"message": EXISTS_ERROR.format("item")}, 400
         data = Item.parser.parse_args()
         item = ItemModel(name, **data)
 
         try:
             item.save_to_db()
         except:
-            return {"message", "An error occurred while saving the new item"}, 500
+            return {"message", SAVE_ERROR.format("item")}, 500
 
         return item.json(), 201
 
+    @classmethod
     @jwt_required
-    def put(self, name: str):
+    def put(cls, name: str):
         data = Item.parser.parse_args()
 
         item = ItemModel.find_by_name(name)
@@ -50,21 +59,31 @@ class Item(Resource):
         item.save_to_db()
         return item.json(), 200
 
+    @classmethod
     @jwt_required
-    def delete(self, name: str):
+    def delete(cls, name: str):
         item = ItemModel.find_by_name(name)
         if item:
             item.delete_from_db()
-            return {"message": "item deleted"}, 200
-        return {"message": "Error, item with name '{}' does not exist".format(name)}, 404
+            return {"message": ITEM_DELETED}, 200
+        return (
+            {"message": ITEM_NOT_FOUND},
+            404,
+        )
 
 
 class ItemList(Resource):
+    @classmethod
     @jwt_optional
-    def get(self):
+    def get(cls):
         user_id = get_jwt_identity()
         items = [item.json() for item in ItemModel.find_all()]
         if user_id:
             return {"items": items}, 200
-        return ({"items": [item["name"] for item in items],
-                 "message": "Not logged in - only returning item names"}, 200)
+        return (
+            {
+                "items": [item["name"] for item in items],
+                "message": "Not logged in - only returning item names",
+            },
+            200,
+        )

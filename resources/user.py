@@ -1,28 +1,51 @@
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_raw_jwt, get_jwt_identity
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    jwt_required,
+    get_raw_jwt,
+    get_jwt_identity,
+)
 from flask_restful import Resource, reqparse
 from werkzeug.security import safe_str_cmp
 
 from blacklist import BLACKLIST
 from models.user import UserModel
 
+BLANK_ERROR = "{} cannot be left blank"
+EXISTS_ERROR = "{} already exists"
+USER_NOT_FOUND = "User {} not found"
+USER_CREATED = "User created successfully"
+USER_DELETED = "User deleted"
+SAVE_ERROR = "An error occurred while saving {}"
+INVALID_CREDENTIALS = "Invalid credentials"
+USER_LOGGED_OUT = "User {} successfully logged out"
+
 parser = reqparse.RequestParser()
-parser.add_argument("username", type=str, required=True, help="A username is required")
-parser.add_argument("password", type=str, required=True, help="A password is required")
+parser.add_argument(
+    "username", type=str, required=True, help=BLANK_ERROR.format("username")
+)
+parser.add_argument(
+    "password", type=str, required=True, help=BLANK_ERROR.format("password")
+)
 
 
 class UserRegister(Resource):
-
-    def post(self):
+    @classmethod
+    def post(cls):
         data = parser.parse_args()
         if UserModel.find_by_username(data["username"]):
-            return {"message": "Error, username '{}' is already taken".format(data["username"])}, 400
+            return (
+                {"message": EXISTS_ERROR.format(data["username"])},
+                400,
+            )
         user = UserModel(**data)
         user.save_to_db()
-        return {"message": "User created successfully"}, 201
+        return {"message": USER_CREATED}, 201
 
 
 class UserPasswordReset(Resource):
-    def put(self, username: str):
+    @classmethod
+    def put(cls, username: str):
         data = parser.parse_args()
         user = UserModel.find_by_username(username)
         if user:
@@ -33,28 +56,31 @@ class UserPasswordReset(Resource):
         try:
             user.save_to_db()
         except:
-            return {"message": "Error, could not update user credentials"}, 500
+            return {"message": SAVE_ERROR.format(username)}, 500
 
         return user.json(), 201
 
 
 class User(Resource):
-    def get(self, user_id: int):
+    @classmethod
+    def get(cls, user_id: int):
         user = UserModel.find_by_id(user_id)
         if user:
             return user.json(), 200
-        return {"message": "User '{}' not found".format(user_id)}, 404
+        return {"message": USER_NOT_FOUND.format(user_id)}, 404
 
-    def delete(self, user_id: int):
+    @classmethod
+    def delete(cls, user_id: int):
         user = UserModel.find_by_id(user_id)
         if not user:
-            return {"message": "Error user id '{}' not found".format(user_id)}, 404
+            return {"message": USER_NOT_FOUND.format(user_id)}, 404
         user.delete_from_db()
-        return {"message": "User deleted"}, 200
+        return {"message": USER_DELETED}, 200
 
 
 class UserLogin(Resource):
-    def post(self):
+    @classmethod
+    def post(cls):
         data = parser.parse_args()
         user = UserModel.find_by_username(data["username"])
 
@@ -63,13 +89,14 @@ class UserLogin(Resource):
             refresh_token = create_refresh_token(user.id)
             return {"access_token": access_token, "refresh_token": refresh_token}
 
-        return {"message": "Invalid credentials"}, 401
+        return {"message": INVALID_CREDENTIALS}, 401
 
 
 class UserLogout(Resource):
+    @classmethod
     @jwt_required
-    def post(self):
+    def post(cls):
         jti = get_raw_jwt()["jti"]
         user_id = get_jwt_identity()
         BLACKLIST.add(jti)
-        return {"message": "User <id={}> successfully logged out".format(user_id)}, 200
+        return {"message": USER_LOGGED_OUT.format(user_id)}, 200

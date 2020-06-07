@@ -16,11 +16,7 @@ class UserModel(db.Model):
         self.password = password
 
     def json(self) -> UserJSON:
-        return {
-            "id": self.id,
-            "username": self.username,
-            "password": self.password
-        }
+        return {"id": self.id, "username": self.username, "password": self.password}
 
     @classmethod
     def find_by_username(cls, username: str) -> "UserModel":

@@ -13,14 +13,14 @@ class StoreModel(db.Model):
     name = db.Column(db.String, unique=True)
     items = db.relationship("ItemModel", lazy="dynamic")
 
-    def __init__(self, name:str):
+    def __init__(self, name: str):
         self.name = name
 
     def json(self) -> StoreJSON:
         return {
             "id": self.id,
             "name": self.name,
-            "items": [item.json() for item in self.items.all()]
+            "items": [item.json() for item in self.items.all()],
         }
 
     @classmethod
