@@ -22,7 +22,7 @@ class UserRegister(Resource):
 
 
 class UserPasswordReset(Resource):
-    def put(self, username):
+    def put(self, username: str):
         data = parser.parse_args()
         user = UserModel.find_by_username(username)
         if user:
