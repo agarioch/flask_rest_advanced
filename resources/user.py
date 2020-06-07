@@ -1,3 +1,4 @@
+from flask import request
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -5,11 +6,13 @@ from flask_jwt_extended import (
     get_raw_jwt,
     get_jwt_identity,
 )
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from werkzeug.security import safe_str_cmp
+from marshmallow import ValidationError
 
 from blacklist import BLACKLIST
 from models.user import UserModel
+from schemas.user import UserSchema
 
 BLANK_ERROR = "{} cannot be left blank"
 EXISTS_ERROR = "{} already exists"
@@ -20,45 +23,24 @@ SAVE_ERROR = "An error occurred while saving {}"
 INVALID_CREDENTIALS = "Invalid credentials"
 USER_LOGGED_OUT = "User {} successfully logged out"
 
-parser = reqparse.RequestParser()
-parser.add_argument(
-    "username", type=str, required=True, help=BLANK_ERROR.format("username")
-)
-parser.add_argument(
-    "password", type=str, required=True, help=BLANK_ERROR.format("password")
-)
+user_schema = UserSchema()
 
 
 class UserRegister(Resource):
     @classmethod
     def post(cls):
-        data = parser.parse_args()
-        if UserModel.find_by_username(data["username"]):
+        try:
+            user = user_schema.load(request.get_json())
+        except ValidationError as err:
+            return err.messages, 400
+
+        if UserModel.find_by_username(user.username):
             return (
-                {"message": EXISTS_ERROR.format(data["username"])},
+                {"message": EXISTS_ERROR.format(user.username)},
                 400,
             )
-        user = UserModel(**data)
         user.save_to_db()
         return {"message": USER_CREATED}, 201
-
-
-class UserPasswordReset(Resource):
-    @classmethod
-    def put(cls, username: str):
-        data = parser.parse_args()
-        user = UserModel.find_by_username(username)
-        if user:
-            user.password = data["password"]
-        else:
-            user = UserModel(username, data["password"])
-
-        try:
-            user.save_to_db()
-        except:
-            return {"message": SAVE_ERROR.format(username)}, 500
-
-        return user.json(), 201
 
 
 class User(Resource):
@@ -66,7 +48,7 @@ class User(Resource):
     def get(cls, user_id: int):
         user = UserModel.find_by_id(user_id)
         if user:
-            return user.json(), 200
+            return user_schema.dump(user), 200
         return {"message": USER_NOT_FOUND.format(user_id)}, 404
 
     @classmethod
@@ -81,10 +63,14 @@ class User(Resource):
 class UserLogin(Resource):
     @classmethod
     def post(cls):
-        data = parser.parse_args()
-        user = UserModel.find_by_username(data["username"])
+        try:
+            user_data = user_schema.load(request.get_json())
+        except ValidationError as err:
+            return err.messages, 400
 
-        if user and safe_str_cmp(user.password, data["password"]):
+        user = UserModel.find_by_username(user_data.username)
+
+        if user and safe_str_cmp(user.password, user_data.password):
             access_token = create_access_token(identity=user.id, fresh=True)
             refresh_token = create_refresh_token(user.id)
             return {"access_token": access_token, "refresh_token": refresh_token}
