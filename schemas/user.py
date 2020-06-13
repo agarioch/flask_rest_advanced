@@ -10,3 +10,4 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
 
     id = ma.auto_field(dump_only=True)
     password = ma.auto_field(load_only=True)
+    activated = ma.auto_field(dump_only=True)

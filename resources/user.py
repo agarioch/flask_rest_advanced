@@ -22,6 +22,8 @@ USER_DELETED = "User deleted"
 SAVE_ERROR = "An error occurred while saving {}"
 INVALID_CREDENTIALS = "Invalid credentials"
 USER_LOGGED_OUT = "User {} successfully logged out"
+NOT_CONFIRMED_ERROR = "Please confirm registration at {}"
+USER_CONFIRMED = "User activated successfully"
 
 user_schema = UserSchema()
 
@@ -64,11 +66,26 @@ class UserLogin(Resource):
         user = UserModel.find_by_username(user_data.username)
 
         if user and safe_str_cmp(user.password, user_data.password):
-            access_token = create_access_token(identity=user.id, fresh=True)
-            refresh_token = create_refresh_token(user.id)
-            return {"access_token": access_token, "refresh_token": refresh_token}
-
+            if user.activated:
+                access_token = create_access_token(identity=user.id, fresh=True)
+                refresh_token = create_refresh_token(user.id)
+                return (
+                    {"access_token": access_token, "refresh_token": refresh_token},
+                    200,
+                )
+            return {"message": NOT_CONFIRMED_ERROR.format(user.username)}, 400
         return {"message": INVALID_CREDENTIALS}, 401
+
+
+class UserConfirm(Resource):
+    @classmethod
+    def get(cls, user_id: int):
+        user = UserModel.find_by_id(user_id)
+        if not user:
+            return {"message": USER_NOT_FOUND.format(user_id)}, 400
+        user.activated = True
+        user.save_to_db()
+        return {"message": USER_CONFIRMED}, 200
 
 
 class UserLogout(Resource):
